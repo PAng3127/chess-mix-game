@@ -1,0 +1,10 @@
+release/boardscene.o
+release/boardview.o
+release/main.o
+release/mainwindow.o
+release/piece.o
+release/settingsdialog.o
+release/moc_boardscene.o
+release/moc_boardview.o
+release/moc_mainwindow.o
+release/moc_settingsdialog.o
