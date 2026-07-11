@@ -6,6 +6,8 @@
 #include <QLabel>
 #include "games/gravitychess/gravityboardscene.h"
 #include "games/gravitychess/gravityboardview.h"
+#include "games/gomoku/gomokuboardscene.h"
+#include "games/gomoku/gomokuboardview.h"
 
 class MainWindow : public QMainWindow
 {
@@ -26,6 +28,7 @@ private:
     void createMenuPage();
     void createGamePage();
     void initGravityChess();
+    void initGomoku();
     void updateToolBarInfo();
     void updateStatus(int player);
     void onGameOver(int winner);
@@ -37,8 +40,15 @@ private:
     
     // 游戏页
     QWidget *m_gamePage;
-    GravityBoardView *m_boardView;
-    GravityBoardScene *m_boardScene;
+    QWidget *m_boardContainer;
+    
+    // 两个视图
+    GravityBoardView *m_gravityView;
+    GomokuBoardView *m_gomokuView;
+    
+    // 当前场景（抽象基类指针）
+    QGraphicsScene *m_currentScene;
+    
     QLabel *m_statusLabel;
     
     // 游戏设置
@@ -46,6 +56,7 @@ private:
     int m_currentRows;
     int m_currentWinCount;
     QString m_currentGameId;
+    QString m_gameType;
 };
 
 #endif // MAINWINDOW_H

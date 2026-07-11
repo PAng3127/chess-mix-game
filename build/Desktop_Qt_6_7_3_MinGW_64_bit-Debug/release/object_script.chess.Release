@@ -5,8 +5,13 @@ release/gamebutton.o
 release/gravityboardscene.o
 release/gravityboardview.o
 release/gravitypiece.o
+release/gomokuboardscene.o
+release/gomokuboardview.o
+release/gomokupiece.o
 release/moc_mainwindow.o
 release/moc_settingsdialog.o
 release/moc_gamebutton.o
 release/moc_gravityboardscene.o
 release/moc_gravityboardview.o
+release/moc_gomokuboardscene.o
+release/moc_gomokuboardview.o

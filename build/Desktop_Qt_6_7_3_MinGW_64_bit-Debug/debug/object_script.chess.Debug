@@ -5,8 +5,13 @@ debug/gamebutton.o
 debug/gravityboardscene.o
 debug/gravityboardview.o
 debug/gravitypiece.o
+debug/gomokuboardscene.o
+debug/gomokuboardview.o
+debug/gomokupiece.o
 debug/moc_mainwindow.o
 debug/moc_settingsdialog.o
 debug/moc_gamebutton.o
 debug/moc_gravityboardscene.o
 debug/moc_gravityboardview.o
+debug/moc_gomokuboardscene.o
+debug/moc_gomokuboardview.o

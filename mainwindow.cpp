@@ -1,22 +1,30 @@
 ﻿#include "mainwindow.h"
 #include "widgets/gamebutton.h"
 #include "widgets/settingsdialog.h"
+#include "games/gomoku/gomokuboardscene.h"
+#include "games/gomoku/gomokuboardview.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QMenuBar>
-#include <QToolBar>
 #include <QStatusBar>
 #include <QMessageBox>
 #include <QPushButton>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
-    , m_boardView(nullptr)
-    , m_boardScene(nullptr)
-    , m_currentCols(8)      // 默认改为 8
-    , m_currentRows(8)      // 默认改为 8
+    , m_stackedWidget(nullptr)      // 添加这些成员变量的初始化
+    , m_menuPage(nullptr)
+    , m_gamePage(nullptr)
+    , m_boardContainer(nullptr)
+    , m_gravityView(nullptr)
+    , m_gomokuView(nullptr)
+    , m_currentScene(nullptr)
+    , m_statusLabel(nullptr)
+    , m_currentCols(8)
+    , m_currentRows(8)
     , m_currentWinCount(4)
     , m_currentGameId("")
+    , m_gameType("重力棋")
 {
     setupUI();
 }
@@ -86,15 +94,13 @@ void MainWindow::createMenuPage()
     connect(gravityBtn, &GameButton::gameSelected, this, &MainWindow::onGameSelected);
     buttonLayout->addWidget(gravityBtn);
 
-    // 五子棋按钮（预留）
+    // 五子棋按钮
     GameButton *gomokuBtn = new GameButton(
         "五子棋",
-        "15×15棋盘\n五子连珠获胜\n(开发中...)",
+        "15×15棋盘\n五子连珠获胜",
         "",
         this
         );
-    gomokuBtn->setEnabled(false);
-    gomokuBtn->setStyleSheet(gomokuBtn->styleSheet() + " opacity: 0.6;");
     connect(gomokuBtn, &GameButton::gameSelected, this, &MainWindow::onGameSelected);
     buttonLayout->addWidget(gomokuBtn);
 
@@ -163,11 +169,24 @@ void MainWindow::createGamePage()
 
     mainLayout->addLayout(toolbarLayout);
 
-    // 棋盘视图
-    m_boardView = new GravityBoardView(this);
-    m_boardView->setMinimumSize(400, 400);
-    m_boardView->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-    mainLayout->addWidget(m_boardView);
+    // 棋盘视图容器（用于动态切换）
+    m_boardContainer = new QWidget(this);
+    QVBoxLayout *containerLayout = new QVBoxLayout(m_boardContainer);
+    containerLayout->setContentsMargins(0, 0, 0, 0);
+
+    // 创建两个视图，但只显示一个
+    m_gravityView = new GravityBoardView(this);
+    m_gravityView->setMinimumSize(400, 400);
+    m_gravityView->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    containerLayout->addWidget(m_gravityView);
+
+    m_gomokuView = new GomokuBoardView(this);
+    m_gomokuView->setMinimumSize(400, 400);
+    m_gomokuView->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    m_gomokuView->hide();
+    containerLayout->addWidget(m_gomokuView);
+
+    mainLayout->addWidget(m_boardContainer);
 
     m_stackedWidget->addWidget(m_gamePage);
 }
@@ -176,50 +195,98 @@ void MainWindow::onGameSelected(const QString &gameId)
 {
     m_currentGameId = gameId;
 
+    // 隐藏所有视图
+    m_gravityView->hide();
+    m_gomokuView->hide();
+
     if (gameId == "重力棋") {
-        // 重置为重力棋默认设置
+        m_gameType = "重力棋";
         m_currentCols = 8;
         m_currentRows = 8;
         m_currentWinCount = 4;
         initGravityChess();
+        m_gravityView->show();
         setWindowTitle("重力棋 - 棋类游戏合集");
-        m_stackedWidget->setCurrentWidget(m_gamePage);
         statusBar()->showMessage("游戏已启动：重力棋");
+    } else if (gameId == "五子棋") {
+        m_gameType = "五子棋";
+        m_currentCols = 15;
+        m_currentRows = 15;
+        m_currentWinCount = 5;
+        initGomoku();
+        m_gomokuView->show();
+        setWindowTitle("五子棋 - 棋类游戏合集");
+        statusBar()->showMessage("游戏已启动：五子棋");
     }
+
+    m_stackedWidget->setCurrentWidget(m_gamePage);
 }
 
 void MainWindow::initGravityChess()
 {
     // 清理旧的场景
-    if (m_boardScene) {
-        delete m_boardScene;
-        m_boardScene = nullptr;
+    if (m_gravityView->getBoardScene()) {
+        delete m_gravityView->getBoardScene();
+        m_gravityView->setBoardScene(nullptr);
     }
 
     // 创建新场景
-    m_boardScene = new GravityBoardScene(m_currentCols, m_currentRows, m_currentWinCount, this);
-    connect(m_boardScene, &GravityBoardScene::currentPlayerChanged,
+    GravityBoardScene *scene = new GravityBoardScene(m_currentCols, m_currentRows, m_currentWinCount, this);
+    connect(scene, &GravityBoardScene::currentPlayerChanged,
             this, &MainWindow::updateStatus);
-    connect(m_boardScene, &GravityBoardScene::gameOver,
+    connect(scene, &GravityBoardScene::gameOver,
             this, &MainWindow::onGameOver);
 
-    m_boardView->setBoardScene(m_boardScene);
-    updateStatus(m_boardScene->getCurrentPlayer());
+    m_gravityView->setBoardScene(scene);
+    m_currentScene = scene;
+    updateStatus(scene->getCurrentPlayer());
+    updateToolBarInfo();
+}
+
+void MainWindow::initGomoku()
+{
+    // 清理旧的场景
+    if (m_gomokuView->getBoardScene()) {
+        delete m_gomokuView->getBoardScene();
+        m_gomokuView->setBoardScene(nullptr);
+    }
+
+    // 创建新场景
+    GomokuBoardScene *scene = new GomokuBoardScene(m_currentCols, m_currentRows, m_currentWinCount, this);
+    connect(scene, &GomokuBoardScene::currentPlayerChanged,
+            this, &MainWindow::updateStatus);
+    connect(scene, &GomokuBoardScene::gameOver,
+            this, &MainWindow::onGameOver);
+
+    m_gomokuView->setBoardScene(scene);
+    m_currentScene = scene;
+    updateStatus(scene->getCurrentPlayer());
     updateToolBarInfo();
 }
 
 void MainWindow::updateToolBarInfo()
 {
-    if (m_boardScene) {
-        QString info = QString("棋盘: %1×%2 | 连子: %3")
-                           .arg(m_currentCols).arg(m_currentRows).arg(m_currentWinCount);
+    if (m_currentScene) {
+        QString info = QString("%1 | 棋盘: %2×%3 | 连子: %4")
+                           .arg(m_gameType).arg(m_currentCols).arg(m_currentRows).arg(m_currentWinCount);
         statusBar()->showMessage(info, 3000);
     }
 }
 
 void MainWindow::updateStatus(int player)
 {
-    if (m_boardScene && m_boardScene->isGameOver()) {
+    // 注意：这里需要将 m_currentScene 转换为具体的类型来调用 isGameOver()
+    // 但由于我们使用的是 QGraphicsScene 基类，需要判断实际类型
+    bool isGameOver = false;
+    if (m_gameType == "重力棋") {
+        GravityBoardScene *scene = qobject_cast<GravityBoardScene*>(m_currentScene);
+        if (scene) isGameOver = scene->isGameOver();
+    } else if (m_gameType == "五子棋") {
+        GomokuBoardScene *scene = qobject_cast<GomokuBoardScene*>(m_currentScene);
+        if (scene) isGameOver = scene->isGameOver();
+    }
+
+    if (isGameOver) {
         return;
     }
 
@@ -259,10 +326,17 @@ void MainWindow::onGameOver(int winner)
 
 void MainWindow::onBackToMenu()
 {
-    if (m_boardScene) {
-        delete m_boardScene;
-        m_boardScene = nullptr;
+    // 清理场景
+    if (m_gravityView->getBoardScene()) {
+        delete m_gravityView->getBoardScene();
+        m_gravityView->setBoardScene(nullptr);
     }
+    if (m_gomokuView->getBoardScene()) {
+        delete m_gomokuView->getBoardScene();
+        m_gomokuView->setBoardScene(nullptr);
+    }
+    m_currentScene = nullptr;
+
     setWindowTitle("棋类游戏合集");
     m_stackedWidget->setCurrentWidget(m_menuPage);
     statusBar()->showMessage("返回主菜单");
@@ -270,10 +344,23 @@ void MainWindow::onBackToMenu()
 
 void MainWindow::onResetGame()
 {
-    if (m_boardScene) {
-        m_boardScene->reset(m_currentCols, m_currentRows, m_currentWinCount);
-        m_boardView->updateView();
-        updateStatus(m_boardScene->getCurrentPlayer());
+    if (m_currentScene) {
+        // 根据游戏类型调用对应的 reset 方法
+        if (m_gameType == "重力棋") {
+            GravityBoardScene *scene = qobject_cast<GravityBoardScene*>(m_currentScene);
+            if (scene) {
+                scene->reset(m_currentCols, m_currentRows, m_currentWinCount);
+                m_gravityView->updateView();
+                updateStatus(scene->getCurrentPlayer());
+            }
+        } else if (m_gameType == "五子棋") {
+            GomokuBoardScene *scene = qobject_cast<GomokuBoardScene*>(m_currentScene);
+            if (scene) {
+                scene->reset(m_currentCols, m_currentRows, m_currentWinCount);
+                m_gomokuView->updateView();
+                updateStatus(scene->getCurrentPlayer());
+            }
+        }
         updateToolBarInfo();
         statusBar()->showMessage("游戏已重置");
     }
@@ -281,13 +368,7 @@ void MainWindow::onResetGame()
 
 void MainWindow::onSettingsClicked()
 {
-    // 获取当前游戏类型
-    QString gameType = m_currentGameId;
-    if (gameType.isEmpty()) {
-        gameType = "重力棋";
-    }
-
-    SettingsDialog dialog(gameType, m_currentCols, m_currentRows, m_currentWinCount, this);
+    SettingsDialog dialog(m_gameType, m_currentCols, m_currentRows, m_currentWinCount, this);
     if (dialog.exec() == QDialog::Accepted) {
         int newCols = dialog.getCols();
         int newRows = dialog.getRows();
@@ -298,10 +379,23 @@ void MainWindow::onSettingsClicked()
             m_currentRows = newRows;
             m_currentWinCount = newWinCount;
 
-            if (m_boardScene) {
-                m_boardScene->reset(m_currentCols, m_currentRows, m_currentWinCount);
-                m_boardView->updateView();
-                updateStatus(m_boardScene->getCurrentPlayer());
+            if (m_currentScene) {
+                // 根据游戏类型调用对应的 reset 方法
+                if (m_gameType == "重力棋") {
+                    GravityBoardScene *scene = qobject_cast<GravityBoardScene*>(m_currentScene);
+                    if (scene) {
+                        scene->reset(m_currentCols, m_currentRows, m_currentWinCount);
+                        m_gravityView->updateView();
+                        updateStatus(scene->getCurrentPlayer());
+                    }
+                } else if (m_gameType == "五子棋") {
+                    GomokuBoardScene *scene = qobject_cast<GomokuBoardScene*>(m_currentScene);
+                    if (scene) {
+                        scene->reset(m_currentCols, m_currentRows, m_currentWinCount);
+                        m_gomokuView->updateView();
+                        updateStatus(scene->getCurrentPlayer());
+                    }
+                }
                 updateToolBarInfo();
                 statusBar()->showMessage("设置已应用");
             }

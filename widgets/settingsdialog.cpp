@@ -129,8 +129,8 @@ void SettingsDialog::updateDefaultValues(const QString &gameType)
         m_rowsSpinBox->setValue(8);
         m_winCountSpinBox->setValue(4);
     } else if (gameType == "五子棋") {
-        m_colsSpinBox->setValue(9);
-        m_rowsSpinBox->setValue(9);
+        m_colsSpinBox->setValue(15);
+        m_rowsSpinBox->setValue(15);
         m_winCountSpinBox->setValue(5);
     } else if (gameType == "围棋") {
         m_colsSpinBox->setValue(19);
@@ -148,8 +148,8 @@ void SettingsDialog::setDefaultValues(const QString &gameType)
         m_rowsSpinBox->setValue(8);
         m_winCountSpinBox->setValue(4);
     } else if (gameType == "五子棋") {
-        m_colsSpinBox->setValue(9);
-        m_rowsSpinBox->setValue(9);
+        m_colsSpinBox->setValue(15);
+        m_rowsSpinBox->setValue(15);
         m_winCountSpinBox->setValue(5);
     } else if (gameType == "围棋") {
         m_colsSpinBox->setValue(19);
