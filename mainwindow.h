@@ -2,12 +2,10 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
-#include <QPushButton>
+#include <QStackedWidget>
 #include <QLabel>
-#include <QToolBar>
-#include <QAction>
-#include "boardview.h"
-#include "boardscene.h"
+#include "games/gravitychess/gravityboardscene.h"
+#include "games/gravitychess/gravityboardview.h"
 
 class MainWindow : public QMainWindow
 {
@@ -18,34 +16,36 @@ public:
     ~MainWindow();
 
 private slots:
-    // 重新开始游戏
-    void onResetClicked();
-
-    // 更新状态显示
-    void updateStatus(int player);
-
-    // 游戏结束处理
-    void onGameOver(int winner);
-
-    // 打开设置对话框
+    void onGameSelected(const QString &gameId);
+    void onBackToMenu();
+    void onResetGame();
     void onSettingsClicked();
 
 private:
     void setupUI();
-    void initGame();
-    void createMenuBar();
-    void createToolBar();
-    void createStatusBar();
-    void updateToolBarInfo();  // 添加这个声明
-
-    BoardView *m_boardView;
-    BoardScene *m_boardScene;
+    void createMenuPage();
+    void createGamePage();
+    void initGravityChess();
+    void updateToolBarInfo();
+    void updateStatus(int player);
+    void onGameOver(int winner);
+    
+    QStackedWidget *m_stackedWidget;
+    
+    // 菜单页
+    QWidget *m_menuPage;
+    
+    // 游戏页
+    QWidget *m_gamePage;
+    GravityBoardView *m_boardView;
+    GravityBoardScene *m_boardScene;
     QLabel *m_statusLabel;
-
-    // 当前设置
+    
+    // 游戏设置
     int m_currentCols;
     int m_currentRows;
     int m_currentWinCount;
+    QString m_currentGameId;
 };
 
 #endif // MAINWINDOW_H

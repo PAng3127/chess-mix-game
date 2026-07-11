@@ -1,32 +1,28 @@
-QT       += core gui
+QT       += core widgets
 
-greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
+TARGET = chess
+TEMPLATE = app
 
-CONFIG += c++17
+DEFINES += QT_DEPRECATED_WARNINGS
 
-# You can make your code fail to compile if it uses deprecated APIs.
-# In order to do so, uncomment the following line.
-#DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
-
+# 源文件
 SOURCES += \
-    boardscene.cpp \
-    boardview.cpp \
     main.cpp \
     mainwindow.cpp \
-    piece.cpp \
-    settingsdialog.cpp
+    widgets/settingsdialog.cpp \
+    widgets/gamebutton.cpp \
+    games/gravitychess/gravityboardscene.cpp \
+    games/gravitychess/gravityboardview.cpp \
+    games/gravitychess/gravitypiece.cpp
 
+# 头文件
 HEADERS += \
-    boardscene.h \
-    boardview.h \
     mainwindow.h \
-    piece.h \
-    settingsdialog.h
+    widgets/settingsdialog.h \
+    widgets/gamebutton.h \
+    games/gravitychess/gravityboardscene.h \
+    games/gravitychess/gravityboardview.h \
+    games/gravitychess/gravitypiece.h
 
-FORMS += \
-    mainwindow.ui
-
-# Default rules for deployment.
-qnx: target.path = /tmp/$${TARGET}/bin
-else: unix:!android: target.path = /opt/$${TARGET}/bin
-!isEmpty(target.path): INSTALLS += target
+# 包含路径
+INCLUDEPATH += games/gravitychess widgets

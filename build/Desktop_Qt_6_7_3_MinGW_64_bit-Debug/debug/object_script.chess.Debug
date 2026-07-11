@@ -1,10 +1,12 @@
-debug/boardscene.o
-debug/boardview.o
 debug/main.o
 debug/mainwindow.o
-debug/piece.o
 debug/settingsdialog.o
-debug/moc_boardscene.o
-debug/moc_boardview.o
+debug/gamebutton.o
+debug/gravityboardscene.o
+debug/gravityboardview.o
+debug/gravitypiece.o
 debug/moc_mainwindow.o
 debug/moc_settingsdialog.o
+debug/moc_gamebutton.o
+debug/moc_gravityboardscene.o
+debug/moc_gravityboardview.o

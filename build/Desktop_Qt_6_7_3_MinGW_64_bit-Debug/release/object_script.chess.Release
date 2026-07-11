@@ -1,10 +1,12 @@
-release/boardscene.o
-release/boardview.o
 release/main.o
 release/mainwindow.o
-release/piece.o
 release/settingsdialog.o
-release/moc_boardscene.o
-release/moc_boardview.o
+release/gamebutton.o
+release/gravityboardscene.o
+release/gravityboardview.o
+release/gravitypiece.o
 release/moc_mainwindow.o
 release/moc_settingsdialog.o
+release/moc_gamebutton.o
+release/moc_gravityboardscene.o
+release/moc_gravityboardview.o

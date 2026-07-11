@@ -37,12 +37,11 @@ namespace {
 struct qt_meta_stringdata_CLASSMainWindowENDCLASS_t {};
 constexpr auto qt_meta_stringdata_CLASSMainWindowENDCLASS = QtMocHelpers::stringData(
     "MainWindow",
-    "onResetClicked",
+    "onGameSelected",
     "",
-    "updateStatus",
-    "player",
-    "onGameOver",
-    "winner",
+    "gameId",
+    "onBackToMenu",
+    "onResetGame",
     "onSettingsClicked"
 );
 #else  // !QT_MOC_HAS_STRINGDATA
@@ -64,15 +63,15 @@ Q_CONSTINIT static const uint qt_meta_data_CLASSMainWindowENDCLASS[] = {
        0,       // signalCount
 
  // slots: name, argc, parameters, tag, flags, initial metatype offsets
-       1,    0,   38,    2, 0x08,    1 /* Private */,
-       3,    1,   39,    2, 0x08,    2 /* Private */,
-       5,    1,   42,    2, 0x08,    4 /* Private */,
-       7,    0,   45,    2, 0x08,    6 /* Private */,
+       1,    1,   38,    2, 0x08,    1 /* Private */,
+       4,    0,   41,    2, 0x08,    3 /* Private */,
+       5,    0,   42,    2, 0x08,    4 /* Private */,
+       6,    0,   43,    2, 0x08,    5 /* Private */,
 
  // slots: parameters
+    QMetaType::Void, QMetaType::QString,    3,
     QMetaType::Void,
-    QMetaType::Void, QMetaType::Int,    4,
-    QMetaType::Void, QMetaType::Int,    6,
+    QMetaType::Void,
     QMetaType::Void,
 
        0        // eod
@@ -87,14 +86,13 @@ Q_CONSTINIT const QMetaObject MainWindow::staticMetaObject = { {
     qt_incomplete_metaTypeArray<qt_meta_stringdata_CLASSMainWindowENDCLASS_t,
         // Q_OBJECT / Q_GADGET
         QtPrivate::TypeAndForceComplete<MainWindow, std::true_type>,
-        // method 'onResetClicked'
+        // method 'onGameSelected'
         QtPrivate::TypeAndForceComplete<void, std::false_type>,
-        // method 'updateStatus'
+        QtPrivate::TypeAndForceComplete<const QString &, std::false_type>,
+        // method 'onBackToMenu'
         QtPrivate::TypeAndForceComplete<void, std::false_type>,
-        QtPrivate::TypeAndForceComplete<int, std::false_type>,
-        // method 'onGameOver'
+        // method 'onResetGame'
         QtPrivate::TypeAndForceComplete<void, std::false_type>,
-        QtPrivate::TypeAndForceComplete<int, std::false_type>,
         // method 'onSettingsClicked'
         QtPrivate::TypeAndForceComplete<void, std::false_type>
     >,
@@ -107,9 +105,9 @@ void MainWindow::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int _id, 
         auto *_t = static_cast<MainWindow *>(_o);
         (void)_t;
         switch (_id) {
-        case 0: _t->onResetClicked(); break;
-        case 1: _t->updateStatus((*reinterpret_cast< std::add_pointer_t<int>>(_a[1]))); break;
-        case 2: _t->onGameOver((*reinterpret_cast< std::add_pointer_t<int>>(_a[1]))); break;
+        case 0: _t->onGameSelected((*reinterpret_cast< std::add_pointer_t<QString>>(_a[1]))); break;
+        case 1: _t->onBackToMenu(); break;
+        case 2: _t->onResetGame(); break;
         case 3: _t->onSettingsClicked(); break;
         default: ;
         }
