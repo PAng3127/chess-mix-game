@@ -8,6 +8,8 @@
 #include "games/gravitychess/gravityboardview.h"
 #include "games/gomoku/gomokuboardscene.h"
 #include "games/gomoku/gomokuboardview.h"
+#include "games/go/goboardscene.h"
+#include "games/go/goboardview.h"
 
 class MainWindow : public QMainWindow
 {
@@ -29,28 +31,31 @@ private:
     void createGamePage();
     void initGravityChess();
     void initGomoku();
+    void initGo();
     void updateToolBarInfo();
     void updateStatus(int player);
     void onGameOver(int winner);
-    
+
     QStackedWidget *m_stackedWidget;
-    
+
     // 菜单页
     QWidget *m_menuPage;
-    
+
     // 游戏页
     QWidget *m_gamePage;
     QWidget *m_boardContainer;
-    
-    // 两个视图
+
+    // 三个视图
     GravityBoardView *m_gravityView;
     GomokuBoardView *m_gomokuView;
-    
-    // 当前场景（抽象基类指针）
+    GoBoardView *m_goView;
+
+    // 当前场景
     QGraphicsScene *m_currentScene;
-    
+
     QLabel *m_statusLabel;
-    
+    QLabel *m_captureLabel;  // 显示提子数
+
     // 游戏设置
     int m_currentCols;
     int m_currentRows;

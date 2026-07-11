@@ -16,7 +16,10 @@ SOURCES += \
     games/gravitychess/gravitypiece.cpp \
     games/gomoku/gomokuboardscene.cpp \
     games/gomoku/gomokuboardview.cpp \
-    games/gomoku/gomokupiece.cpp
+    games/gomoku/gomokupiece.cpp \
+    games/go/goboardscene.cpp \
+    games/go/goboardview.cpp \
+    games/go/gopiece.cpp
 
 # 头文件
 HEADERS += \
@@ -28,7 +31,14 @@ HEADERS += \
     games/gravitychess/gravitypiece.h \
     games/gomoku/gomokuboardscene.h \
     games/gomoku/gomokuboardview.h \
-    games/gomoku/gomokupiece.h
+    games/gomoku/gomokupiece.h \
+    games/go/goboardscene.h \
+    games/go/goboardview.h \
+    games/go/gopiece.h
 
 # 包含路径
-INCLUDEPATH += games/gravitychess games/gomoku widgets
+INCLUDEPATH += \
+    games/gravitychess \
+    games/gomoku \
+    games/go \
+    widgets
