@@ -4,6 +4,7 @@
 #include <QMainWindow>
 #include <QStackedWidget>
 #include <QLabel>
+#include <QPushButton>
 #include "games/gravitychess/gravityboardscene.h"
 #include "games/gravitychess/gravityboardview.h"
 #include "games/gomoku/gomokuboardscene.h"
@@ -25,6 +26,11 @@ private slots:
     void onResetGame();
     void onSettingsClicked();
 
+    // 游戏结束槽函数 - 支持所有游戏类型
+    void onGameOver(int winner);
+    // 围棋专用 - 带详细结果
+    void onGoGameOver(int winner, const QString &resultDetail);
+
 private:
     void setupUI();
     void createMenuPage();
@@ -34,7 +40,6 @@ private:
     void initGo();
     void updateToolBarInfo();
     void updateStatus(int player);
-    void onGameOver(int winner);
 
     QStackedWidget *m_stackedWidget;
 
@@ -55,6 +60,9 @@ private:
 
     QLabel *m_statusLabel;
     QLabel *m_captureLabel;  // 显示提子数
+
+    // 主页面左上角图标
+    QLabel *m_logoLabel;
 
     // 游戏设置
     int m_currentCols;

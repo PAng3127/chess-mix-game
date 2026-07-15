@@ -26,6 +26,8 @@ MainWindow::MainWindow(QWidget *parent)
     , m_currentGameId("")
     , m_gameType("围棋")
 {
+    // 设置窗口图标
+    setWindowIcon(QIcon(":/ico/gochess.ico"));
     setupUI();
 }
 
@@ -34,7 +36,7 @@ MainWindow::~MainWindow() {}
 void MainWindow::setupUI()
 {
     setWindowTitle("棋类游戏合集");
-    setMinimumSize(800, 600);
+    setMinimumSize(840,500);
 
     // 创建菜单栏
     QMenuBar *menuBar = new QMenuBar(this);
@@ -68,7 +70,25 @@ void MainWindow::createMenuPage()
     mainLayout->setAlignment(Qt::AlignCenter);
     mainLayout->setSpacing(30);
 
-    QLabel *titleLabel = new QLabel("🎮 棋类游戏合集", this);
+    // --- 顶部布局：包含图标和标题 ---
+    QWidget *headerWidget = new QWidget(this);
+    QHBoxLayout *headerLayout = new QHBoxLayout(headerWidget);
+    headerLayout->setAlignment(Qt::AlignCenter);
+    headerLayout->setSpacing(20);
+
+    // 左上角图标（自适应大小）
+    m_logoLabel = new QLabel(this);
+    QPixmap logoPixmap(":/ico/gochess.ico");
+    if (!logoPixmap.isNull()) {
+        QPixmap scaledLogo = logoPixmap.scaled(64, 64, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+        m_logoLabel->setPixmap(scaledLogo);
+    }
+    m_logoLabel->setFixedSize(64, 64);
+    m_logoLabel->setStyleSheet("border: none;");
+    headerLayout->addWidget(m_logoLabel);
+
+    // 标题
+    QLabel *titleLabel = new QLabel("棋类游戏合集", this);
     titleLabel->setAlignment(Qt::AlignCenter);
     QFont titleFont = titleLabel->font();
     titleFont.setPointSize(32);
@@ -287,8 +307,9 @@ void MainWindow::initGo()
     GoBoardScene *scene = new GoBoardScene(m_currentCols, this);
     connect(scene, &GoBoardScene::currentPlayerChanged,
             this, &MainWindow::updateStatus);
+    // 围棋使用带详细结果的信号
     connect(scene, &GoBoardScene::gameOver,
-            this, &MainWindow::onGameOver);
+            this, &MainWindow::onGoGameOver);
     connect(scene, &GoBoardScene::capturesChanged,
             this, [this](int black, int white) {
                 m_captureLabel->setText(QString("黑:%1 白:%2").arg(black).arg(white));
@@ -344,29 +365,68 @@ void MainWindow::updateStatus(int player)
     }
 }
 
+// ==================== 游戏结束处理 ====================
+
 void MainWindow::onGameOver(int winner)
 {
-    QString message;
+    QString title;
     QString style;
+    QString message;
 
     if (winner == 1) {
-        message = "⚫ 黑棋胜利！";
+        title = "⚫ 黑棋胜利！";
+        message = "黑棋取得胜利！";
         style = "padding: 5px 15px; background-color: #4CAF50; border-radius: 5px; color: white;";
         statusBar()->showMessage("黑棋胜利！");
     } else if (winner == 2) {
-        message = "⚪ 白棋胜利！";
+        title = "⚪ 白棋胜利！";
+        message = "白棋取得胜利！";
         style = "padding: 5px 15px; background-color: #4CAF50; border-radius: 5px; color: white;";
         statusBar()->showMessage("白棋胜利！");
     } else {
-        message = "平局！";
+        title = "🤝 平局！";
+        message = "双方平局！";
         style = "padding: 5px 15px; background-color: #FF9800; border-radius: 5px; color: white;";
         statusBar()->showMessage("平局！");
     }
 
-    m_statusLabel->setText(message);
+    m_statusLabel->setText(title);
     m_statusLabel->setStyleSheet(style);
 
     QMessageBox::information(this, "游戏结束", message);
+}
+
+// 围棋专用 - 显示详细计分
+void MainWindow::onGoGameOver(int winner, const QString &resultDetail)
+{
+    QString title;
+    QString style;
+
+    if (winner == 1) {
+        title = "⚫ 黑棋胜利！";
+        style = "padding: 5px 15px; background-color: #4CAF50; border-radius: 5px; color: white;";
+        statusBar()->showMessage("黑棋胜利！");
+    } else if (winner == 2) {
+        title = "⚪ 白棋胜利！";
+        style = "padding: 5px 15px; background-color: #4CAF50; border-radius: 5px; color: white;";
+        statusBar()->showMessage("白棋胜利！");
+    } else {
+        title = "🤝 平局！";
+        style = "padding: 5px 15px; background-color: #FF9800; border-radius: 5px; color: white;";
+        statusBar()->showMessage("平局！");
+    }
+
+    m_statusLabel->setText(title);
+    m_statusLabel->setStyleSheet(style);
+
+    // 显示详细计分结果
+    QMessageBox msgBox;
+    msgBox.setWindowTitle("🏁 游戏结束");
+    msgBox.setText(resultDetail);
+    msgBox.setIcon(QMessageBox::Information);
+    msgBox.setStandardButtons(QMessageBox::Ok);
+    msgBox.setMinimumWidth(450);
+    msgBox.exec();
 }
 
 void MainWindow::onBackToMenu()

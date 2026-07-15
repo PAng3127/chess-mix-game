@@ -5,6 +5,10 @@ TEMPLATE = app
 
 DEFINES += QT_DEPRECATED_WARNINGS
 
+# 添加图标资源
+RC_FILE = icon.rc
+RESOURCES += resources.qrc
+
 # 源文件
 SOURCES += \
     main.cpp \
@@ -42,3 +46,6 @@ INCLUDEPATH += \
     games/gomoku \
     games/go \
     widgets
+
+RESOURCES += \
+    resources.qrc

@@ -11,11 +11,11 @@ GoBoardScene::GoBoardScene(int size, QObject *parent)
     , m_size(size)
     , m_currentPlayer(1)
     , m_gameOver(false)
-    , m_captures(3, 0)  // 索引0不用，索引1=黑方提子，索引2=白方提子
+    , m_captures(3, 0)
     , m_koPoint(-1, -1)
     , m_koFlag(false)
+    , m_consecutivePasses(0)
 {
-    // 初始化棋盘
     m_board.resize(m_size);
     for (int col = 0; col < m_size; ++col) {
         m_board[col].resize(m_size, 0);
@@ -26,130 +26,26 @@ GoBoardScene::GoBoardScene(int size, QObject *parent)
     drawBoard();
 }
 
-void GoBoardScene::drawBoard()
-{
-    clear();
-    m_blackStones.clear();
-    m_whiteStones.clear();
-
-    QRectF sceneRect = this->sceneRect();
-    qreal boardWidth = sceneRect.width();
-    qreal boardHeight = sceneRect.height();
-    qreal cellSize = qMin(boardWidth / m_size, boardHeight / m_size);
-
-    // 计算实际棋盘边距（居中显示）
-    qreal boardSize = qMin(boardWidth, boardHeight);
-    qreal marginX = (boardWidth - cellSize * (m_size - 1)) / 2;
-    qreal marginY = (boardHeight - cellSize * (m_size - 1)) / 2;
-
-    // 棋盘背景 - 木质色
-    QBrush bgBrush(QColor(222, 184, 135));
-    QPen bgPen(Qt::NoPen);
-    addRect(0, 0, boardWidth, boardHeight, bgPen, bgBrush);
-
-    // 绘制网格线
-    QPen gridPen(Qt::black, 1.5);
-
-    // 垂直线
-    for (int col = 0; col < m_size; ++col) {
-        qreal x = marginX + col * cellSize;
-        addLine(x, marginY, x, marginY + (m_size - 1) * cellSize, gridPen);
-    }
-
-    // 水平线
-    for (int row = 0; row < m_size; ++row) {
-        qreal y = marginY + row * cellSize;
-        addLine(marginX, y, marginX + (m_size - 1) * cellSize, y, gridPen);
-    }
-
-    // 绘制星位
-    drawStarPoints();
-
-    // 已有棋子
-    for (int col = 0; col < m_size; ++col) {
-        for (int row = 0; row < m_size; ++row) {
-            if (m_board[col][row] != 0) {
-                addPieceToScene(col, row, m_board[col][row]);
-                if (m_board[col][row] == 1) {
-                    m_blackStones.insert(QPoint(col, row));
-                } else {
-                    m_whiteStones.insert(QPoint(col, row));
-                }
-            }
-        }
-    }
-}
-
-void GoBoardScene::drawStarPoints()
-{
-    QRectF sceneRect = this->sceneRect();
-    qreal cellSize = qMin(sceneRect.width() / m_size, sceneRect.height() / m_size);
-    qreal marginX = (sceneRect.width() - cellSize * (m_size - 1)) / 2;
-    qreal marginY = (sceneRect.height() - cellSize * (m_size - 1)) / 2;
-
-    // 定义星位位置
-    QVector<QPoint> starPositions;
-
-    if (m_size == 19) {
-        // 标准19路围棋星位
-        starPositions = {
-            {3, 3}, {15, 3}, {9, 9}, {3, 15}, {15, 15}
-        };
-    } else if (m_size == 13) {
-        starPositions = {
-            {3, 3}, {9, 3}, {6, 6}, {3, 9}, {9, 9}
-        };
-    } else if (m_size == 9) {
-        starPositions = {
-            {2, 2}, {6, 2}, {4, 4}, {2, 6}, {6, 6}
-        };
-    } else if (m_size >= 9) {
-        // 对于其他尺寸，在四角和中心添加星位
-        int mid = m_size / 2;
-        int edgeOffset = 3;
-        if (m_size > edgeOffset * 2) {
-            starPositions = {
-                {edgeOffset, edgeOffset},
-                {m_size - 1 - edgeOffset, edgeOffset},
-                {mid, mid},
-                {edgeOffset, m_size - 1 - edgeOffset},
-                {m_size - 1 - edgeOffset, m_size - 1 - edgeOffset}
-            };
-        }
-    }
-
-    // 绘制星位
-    QBrush starBrush(Qt::black);
-    QPen starPen(Qt::NoPen);
-    qreal starRadius = cellSize * 0.1;
-
-    for (const QPoint &pos : starPositions) {
-        if (pos.x() < m_size && pos.y() < m_size) {
-            qreal x = marginX + pos.x() * cellSize;
-            qreal y = marginY + pos.y() * cellSize;
-            QGraphicsEllipseItem *star = new QGraphicsEllipseItem(
-                x - starRadius, y - starRadius, starRadius * 2, starRadius * 2
-                );
-            star->setBrush(starBrush);
-            star->setPen(starPen);
-            addItem(star);
-        }
-    }
-}
+// ==================== 核心落子逻辑 ====================
 
 bool GoBoardScene::placePiece(int col, int row)
 {
     if (m_gameOver) return false;
     if (col < 0 || col >= m_size || row < 0 || row >= m_size) return false;
-    if (m_board[col][row] != 0) return false;  // 位置已被占用
+    if (m_board[col][row] != 0) return false;
+
+    // 重置pass计数
+    m_consecutivePasses = 0;
 
     // 检查劫争
     if (m_koFlag && col == m_koPoint.x() && row == m_koPoint.y()) {
-        return false;  // 禁着点
+        emit gameInfoChanged("⚡ 劫争！不能立即提回");
+        return false;
     }
 
     // 检查是否自杀
     if (isSuicide(col, row, m_currentPlayer)) {
+        emit gameInfoChanged("❌ 禁止自杀！");
         return false;
     }
 
@@ -173,7 +69,6 @@ bool GoBoardScene::placePiece(int col, int row)
     int opponent = (m_currentPlayer == 1) ? 2 : 1;
     bool captured = false;
 
-    // 检查四个方向
     int directions[4][2] = {{1,0}, {-1,0}, {0,1}, {0,-1}};
     for (int i = 0; i < 4; ++i) {
         int checkCol = col + directions[i][0];
@@ -187,59 +82,43 @@ bool GoBoardScene::placePiece(int col, int row)
         }
     }
 
-    // 检查自己是否被吃（提子后可能自己气也变少）
+    // 检查自己是否被吃
     if (!captured) {
-        // 检查刚下的棋子是否有气
         if (getLibertyCount(col, row) == 0) {
-            // 自杀，撤回
             m_board[col][row] = 0;
             removePieceFromScene(col, row);
+            emit gameInfoChanged("❌ 自杀！撤回");
             return false;
         }
     }
 
     // 检查劫争
     if (captured) {
-        // 如果是单子被提，记录劫争点
-        // 简单实现：如果只有一个棋子被提，且提子方只提了一个子
-        // 这里简化处理，只检查是否形成劫争
-        if (m_board[col][row] != 0) {
-            // 检查对方是否可以在同一位置提回
-            int tempPlayer = m_currentPlayer;
-            m_currentPlayer = opponent;
-            // 检查对方能否在 col, row 落子提回
-            // 简单劫争检测：如果对方在这个位置落子能提回一个子，且没有其他变化
-            // 这里使用简化版本
-            m_koPoint = QPoint(col, row);
-            m_koFlag = true;
-        }
-    }
-
-    // 检查游戏是否结束（这里简单处理，实际围棋需要更复杂的终局判断）
-    // 这里我们简单检查棋盘是否已满
-    bool isFull = true;
-    for (int c = 0; c < m_size; ++c) {
-        for (int r = 0; r < m_size; ++r) {
-            if (m_board[c][r] == 0) {
-                isFull = false;
-                break;
+        // 检查是否形成劫争（单子被提）
+        int captureCount = 0;
+        for (int i = 0; i < 4; ++i) {
+            int checkCol = col + directions[i][0];
+            int checkRow = row + directions[i][1];
+            if (checkCol >= 0 && checkCol < m_size && checkRow >= 0 && checkRow < m_size) {
+                if (m_board[checkCol][checkRow] == m_currentPlayer) {
+                    captureCount++;
+                }
             }
         }
-        if (!isFull) break;
+        // 如果只提了一个子，记录劫争
+        if (captureCount == 1 && m_board[col][row] != 0) {
+            m_koPoint = QPoint(col, row);
+            m_koFlag = true;
+            emit gameInfoChanged("⚠️ 劫争形成！");
+        }
     }
 
-    if (isFull) {
-        m_gameOver = true;
-        // 计分：简单比较提子数
-        if (m_captures[1] > m_captures[2]) {
-            emit gameOver(1);
-        } else if (m_captures[2] > m_captures[1]) {
-            emit gameOver(2);
-        } else {
-            emit gameOver(0);
-        }
-        return true;
-    }
+    // 发送游戏信息
+    QString info = QString("第 %1 手 | 黑提 %2 子 | 白提 %3 子")
+                       .arg(m_blackStones.size() + m_whiteStones.size())
+                       .arg(m_captures[1])
+                       .arg(m_captures[2]);
+    emit gameInfoChanged(info);
 
     // 切换玩家
     m_currentPlayer = opponent;
@@ -249,25 +128,47 @@ bool GoBoardScene::placePiece(int col, int row)
     return true;
 }
 
+// ==================== Pass功能 ====================
+
+bool GoBoardScene::passTurn()
+{
+    if (m_gameOver) return false;
+
+    m_consecutivePasses++;
+    emit gameInfoChanged(QString("⏸️ 停手 #%1").arg(m_consecutivePasses));
+
+    // 如果双方都Pass，游戏结束
+    if (m_consecutivePasses >= 2) {
+        calculateAndEmitResult();
+        return true;
+    }
+
+    // 切换玩家
+    int opponent = (m_currentPlayer == 1) ? 2 : 1;
+    m_currentPlayer = opponent;
+    emit currentPlayerChanged(m_currentPlayer);
+
+    return true;
+}
+
+// ==================== 提子逻辑 ====================
+
 bool GoBoardScene::removeCapturedStones(int col, int row, int player)
 {
-    // 获取该棋子所在的组
     QVector<QPoint> group = getGroup(col, row);
     if (group.isEmpty()) return false;
 
-    // 检查组的气
     QVector<QPoint> liberties = getLiberties(group);
     if (liberties.isEmpty()) {
-        // 移除整组棋子
         for (const QPoint &p : group) {
             m_board[p.x()][p.y()] = 0;
             removePieceFromScene(p.x(), p.y());
             if (player == 1) {
                 m_blackStones.remove(p);
-                m_captures[2]++;  // 白方提黑子
+                m_captures[2]++;
             } else {
                 m_whiteStones.remove(p);
-                m_captures[1]++;  // 黑方提白子
+                m_captures[1]++;
             }
             emit pieceCaptured(p.x(), p.y(), player);
         }
@@ -275,6 +176,8 @@ bool GoBoardScene::removeCapturedStones(int col, int row, int player)
     }
     return false;
 }
+
+// ==================== 组和气的计算 ====================
 
 QVector<QPoint> GoBoardScene::getGroup(int col, int row) const
 {
@@ -343,16 +246,15 @@ int GoBoardScene::getLibertyCount(int col, int row) const
     return liberties.size();
 }
 
-bool GoBoardScene::isSuicide(int col, int row, int player)  // 移除 const
+// ==================== 自杀检测 ====================
+
+bool GoBoardScene::isSuicide(int col, int row, int player)
 {
-    // 模拟落子
     int oldValue = m_board[col][row];
     m_board[col][row] = player;
 
-    // 检查新棋子是否有气
     int libertyCount = getLibertyCount(col, row);
 
-    // 检查是否提掉对方棋子
     int opponent = (player == 1) ? 2 : 1;
     bool willCapture = false;
     int directions[4][2] = {{1,0}, {-1,0}, {0,1}, {0,-1}};
@@ -371,12 +273,250 @@ bool GoBoardScene::isSuicide(int col, int row, int player)  // 移除 const
         }
     }
 
-    // 恢复棋盘状态
     m_board[col][row] = oldValue;
 
-    // 如果有气或者能提子，则不是自杀
     return (libertyCount == 0 && !willCapture);
 }
+
+// ==================== 死活判定 ====================
+
+QSet<QPoint> GoBoardScene::getDeadStones(int player) const
+{
+    QSet<QPoint> deadStones;
+
+    for (int col = 0; col < m_size; ++col) {
+        for (int row = 0; row < m_size; ++row) {
+            if (m_board[col][row] == player) {
+                QVector<QPoint> group = getGroup(col, row);
+                QVector<QPoint> liberties = getLiberties(group);
+                if (liberties.isEmpty()) {
+                    for (const QPoint &p : group) {
+                        deadStones.insert(p);
+                    }
+                }
+            }
+        }
+    }
+
+    return deadStones;
+}
+
+int GoBoardScene::countDeadStones(int player) const
+{
+    return getDeadStones(player).size();
+}
+
+// ==================== 计分系统 ====================
+
+int GoBoardScene::countTerritory(int player) const
+{
+    int territory = 0;
+
+    QVector<QVector<bool>> visited(m_size, QVector<bool>(m_size, false));
+    int directions[4][2] = {{1,0}, {-1,0}, {0,1}, {0,-1}};
+
+    for (int col = 0; col < m_size; ++col) {
+        for (int row = 0; row < m_size; ++row) {
+            if (m_board[col][row] == 0 && !visited[col][row]) {
+                QQueue<QPoint> queue;
+                QSet<QPoint> region;
+                queue.enqueue(QPoint(col, row));
+                visited[col][row] = true;
+                region.insert(QPoint(col, row));
+
+                bool isPlayerTerritory = true;
+                bool hasBlackBorder = false;
+                bool hasWhiteBorder = false;
+
+                while (!queue.isEmpty()) {
+                    QPoint current = queue.dequeue();
+
+                    for (int i = 0; i < 4; ++i) {
+                        int newCol = current.x() + directions[i][0];
+                        int newRow = current.y() + directions[i][1];
+                        if (newCol >= 0 && newCol < m_size && newRow >= 0 && newRow < m_size) {
+                            if (m_board[newCol][newRow] == 0 && !visited[newCol][newRow]) {
+                                queue.enqueue(QPoint(newCol, newRow));
+                                visited[newCol][newRow] = true;
+                                region.insert(QPoint(newCol, newRow));
+                            } else if (m_board[newCol][newRow] == 1) {
+                                hasBlackBorder = true;
+                            } else if (m_board[newCol][newRow] == 2) {
+                                hasWhiteBorder = true;
+                            }
+                        }
+                    }
+                }
+
+                // 只有被同一方包围的空地才算地盘
+                if (hasBlackBorder && !hasWhiteBorder) {
+                    territory += region.size();
+                } else if (hasWhiteBorder && !hasBlackBorder) {
+                    territory += region.size();
+                }
+            }
+        }
+    }
+
+    return territory;
+}
+
+int GoBoardScene::countStones(int player) const
+{
+    int count = 0;
+    for (int col = 0; col < m_size; ++col) {
+        for (int row = 0; row < m_size; ++row) {
+            if (m_board[col][row] == player) {
+                count++;
+            }
+        }
+    }
+    return count;
+}
+
+double GoBoardScene::calculateScore(int player) const
+{
+    // 中国规则：棋子 + 地盘 - 贴目
+    double komi = 3.75;  // 白棋贴3.75子
+    int stones = countStones(player);
+    int territory = countTerritory(player);
+    double score = stones + territory;
+
+    if (player == 2) {
+        score += komi;  // 白棋加贴目
+    }
+
+    return score;
+}
+
+// ==================== 计算结果 ====================
+
+void GoBoardScene::calculateAndEmitResult()
+{
+    if (m_gameOver) return;
+
+    m_gameOver = true;
+
+    // 移除死子
+    QSet<QPoint> deadBlack = getDeadStones(1);
+    QSet<QPoint> deadWhite = getDeadStones(2);
+
+    for (const QPoint &p : deadBlack) {
+        m_board[p.x()][p.y()] = 0;
+        removePieceFromScene(p.x(), p.y());
+        m_blackStones.remove(p);
+        m_captures[2]++;
+    }
+    for (const QPoint &p : deadWhite) {
+        m_board[p.x()][p.y()] = 0;
+        removePieceFromScene(p.x(), p.y());
+        m_whiteStones.remove(p);
+        m_captures[1]++;
+    }
+
+    // 计算得分
+    double blackScore = calculateScore(1);
+    double whiteScore = calculateScore(2);
+
+    // 详细结果
+    int blackStones = countStones(1);
+    int whiteStones = countStones(2);
+    int blackTerritory = countTerritory(1);
+    int whiteTerritory = countTerritory(2);
+    int deadBlackCount = deadBlack.size();
+    int deadWhiteCount = deadWhite.size();
+
+    QString resultDetail;
+    int winner;
+
+    if (blackScore > whiteScore) {
+        winner = 1;
+        resultDetail = QString(
+                           "🏆 黑棋胜！\n\n"
+                           "━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+                           "📊 详细计分（中国规则）\n"
+                           "━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                           "⚫ 黑棋：\n"
+                           "  • 棋子：%1 子\n"
+                           "  • 地盘：%2 目\n"
+                           "  • 提子：%3 子\n"
+                           "  • 小计：%4 子\n\n"
+                           "⚪ 白棋：\n"
+                           "  • 棋子：%5 子\n"
+                           "  • 地盘：%6 目\n"
+                           "  • 提子：%7 子\n"
+                           "  • 贴目：+3.75 子\n"
+                           "  • 小计：%8 子\n\n"
+                           "━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+                           "📌 结果：黑胜 %.1f 子"
+                           )
+                           .arg(blackStones)
+                           .arg(blackTerritory)
+                           .arg(m_captures[1])
+                           .arg(blackStones + blackTerritory)
+                           .arg(whiteStones)
+                           .arg(whiteTerritory)
+                           .arg(m_captures[2])
+                           .arg(whiteStones + whiteTerritory + 3.75)
+                           .arg(blackScore - whiteScore);
+    } else if (whiteScore > blackScore) {
+        winner = 2;
+        resultDetail = QString(
+                           "🏆 白棋胜！\n\n"
+                           "━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+                           "📊 详细计分（中国规则）\n"
+                           "━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                           "⚫ 黑棋：\n"
+                           "  • 棋子：%1 子\n"
+                           "  • 地盘：%2 目\n"
+                           "  • 提子：%3 子\n"
+                           "  • 小计：%4 子\n\n"
+                           "⚪ 白棋：\n"
+                           "  • 棋子：%5 子\n"
+                           "  • 地盘：%6 目\n"
+                           "  • 提子：%7 子\n"
+                           "  • 贴目：+3.75 子\n"
+                           "  • 小计：%8 子\n\n"
+                           "━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+                           "📌 结果：白胜 %.1f 子"
+                           )
+                           .arg(blackStones)
+                           .arg(blackTerritory)
+                           .arg(m_captures[1])
+                           .arg(blackStones + blackTerritory)
+                           .arg(whiteStones)
+                           .arg(whiteTerritory)
+                           .arg(m_captures[2])
+                           .arg(whiteStones + whiteTerritory + 3.75)
+                           .arg(whiteScore - blackScore);
+    } else {
+        winner = 0;
+        resultDetail = "🤝 平局！\n\n双方实力相当！";
+    }
+
+    emit gameOver(winner, resultDetail);
+    emit gameInfoChanged("🏁 游戏结束！");
+}
+
+// ==================== 获取结果 ====================
+
+QString GoBoardScene::getGameResult() const
+{
+    if (!m_gameOver) return "游戏未结束";
+
+    double blackScore = calculateScore(1);
+    double whiteScore = calculateScore(2);
+
+    if (blackScore > whiteScore) {
+        return QString("黑胜 %.1f 子").arg(blackScore - whiteScore);
+    } else if (whiteScore > blackScore) {
+        return QString("白胜 %.1f 子").arg(whiteScore - blackScore);
+    } else {
+        return "平局";
+    }
+}
+
+// ==================== 其他方法 ====================
 
 bool GoBoardScene::checkKo(int col, int row) const
 {
@@ -385,7 +525,6 @@ bool GoBoardScene::checkKo(int col, int row) const
 
 bool GoBoardScene::isEye(int col, int row, int player) const
 {
-    // 简单判断是否为眼：周围四个点都是己方棋子
     int directions[4][2] = {{1,0}, {-1,0}, {0,1}, {0,-1}};
     for (int i = 0; i < 4; ++i) {
         int newCol = col + directions[i][0];
@@ -399,35 +538,6 @@ bool GoBoardScene::isEye(int col, int row, int player) const
     return true;
 }
 
-int GoBoardScene::countTerritory(int player) const
-{
-    // 简化版计地：计算所有空位周围棋子颜色
-    int territory = 0;
-    for (int col = 0; col < m_size; ++col) {
-        for (int row = 0; row < m_size; ++row) {
-            if (m_board[col][row] == 0) {
-                // 检查周围四个方向的棋子
-                int directions[4][2] = {{1,0}, {-1,0}, {0,1}, {0,-1}};
-                bool isPlayerTerritory = true;
-                for (int i = 0; i < 4; ++i) {
-                    int newCol = col + directions[i][0];
-                    int newRow = row + directions[i][1];
-                    if (newCol >= 0 && newCol < m_size && newRow >= 0 && newRow < m_size) {
-                        if (m_board[newCol][newRow] != 0 && m_board[newCol][newRow] != player) {
-                            isPlayerTerritory = false;
-                            break;
-                        }
-                    }
-                }
-                if (isPlayerTerritory) {
-                    territory++;
-                }
-            }
-        }
-    }
-    return territory;
-}
-
 void GoBoardScene::reset(int size)
 {
     m_size = size;
@@ -438,6 +548,7 @@ void GoBoardScene::reset(int size)
     m_captures[2] = 0;
     m_koFlag = false;
     m_koPoint = QPoint(-1, -1);
+    m_consecutivePasses = 0;
     m_blackStones.clear();
     m_whiteStones.clear();
 
@@ -450,14 +561,103 @@ void GoBoardScene::reset(int size)
     QSizeF sceneSize = calculateSceneSize();
     setSceneRect(0, 0, sceneSize.width(), sceneSize.height());
     drawBoard();
+
+    emit gameInfoChanged("🔄 游戏已重置");
 }
 
-int GoBoardScene::getCell(int col, int row) const
+// ==================== 绘制方法 ====================
+
+void GoBoardScene::drawBoard()
 {
-    if (col >= 0 && col < m_size && row >= 0 && row < m_size) {
-        return m_board[col][row];
+    clear();
+    m_blackStones.clear();
+    m_whiteStones.clear();
+
+    QRectF sceneRect = this->sceneRect();
+    qreal boardWidth = sceneRect.width();
+    qreal boardHeight = sceneRect.height();
+    qreal cellSize = qMin(boardWidth / m_size, boardHeight / m_size);
+
+    qreal boardSize = qMin(boardWidth, boardHeight);
+    qreal marginX = (boardWidth - cellSize * (m_size - 1)) / 2;
+    qreal marginY = (boardHeight - cellSize * (m_size - 1)) / 2;
+
+    QBrush bgBrush(QColor(222, 184, 135));
+    QPen bgPen(Qt::NoPen);
+    addRect(0, 0, boardWidth, boardHeight, bgPen, bgBrush);
+
+    QPen gridPen(Qt::black, 1.5);
+
+    for (int col = 0; col < m_size; ++col) {
+        qreal x = marginX + col * cellSize;
+        addLine(x, marginY, x, marginY + (m_size - 1) * cellSize, gridPen);
     }
-    return -1;
+    for (int row = 0; row < m_size; ++row) {
+        qreal y = marginY + row * cellSize;
+        addLine(marginX, y, marginX + (m_size - 1) * cellSize, y, gridPen);
+    }
+
+    drawStarPoints();
+
+    for (int col = 0; col < m_size; ++col) {
+        for (int row = 0; row < m_size; ++row) {
+            if (m_board[col][row] != 0) {
+                addPieceToScene(col, row, m_board[col][row]);
+                if (m_board[col][row] == 1) {
+                    m_blackStones.insert(QPoint(col, row));
+                } else {
+                    m_whiteStones.insert(QPoint(col, row));
+                }
+            }
+        }
+    }
+}
+
+void GoBoardScene::drawStarPoints()
+{
+    QRectF sceneRect = this->sceneRect();
+    qreal cellSize = qMin(sceneRect.width() / m_size, sceneRect.height() / m_size);
+    qreal marginX = (sceneRect.width() - cellSize * (m_size - 1)) / 2;
+    qreal marginY = (sceneRect.height() - cellSize * (m_size - 1)) / 2;
+
+    QVector<QPoint> starPositions;
+
+    if (m_size == 19) {
+        starPositions = {{3, 3}, {15, 3}, {9, 9}, {3, 15}, {15, 15}};
+    } else if (m_size == 13) {
+        starPositions = {{3, 3}, {9, 3}, {6, 6}, {3, 9}, {9, 9}};
+    } else if (m_size == 9) {
+        starPositions = {{2, 2}, {6, 2}, {4, 4}, {2, 6}, {6, 6}};
+    } else if (m_size >= 9) {
+        int mid = m_size / 2;
+        int edgeOffset = 3;
+        if (m_size > edgeOffset * 2) {
+            starPositions = {
+                {edgeOffset, edgeOffset},
+                {m_size - 1 - edgeOffset, edgeOffset},
+                {mid, mid},
+                {edgeOffset, m_size - 1 - edgeOffset},
+                {m_size - 1 - edgeOffset, m_size - 1 - edgeOffset}
+            };
+        }
+    }
+
+    QBrush starBrush(Qt::black);
+    QPen starPen(Qt::NoPen);
+    qreal starRadius = cellSize * 0.1;
+
+    for (const QPoint &pos : starPositions) {
+        if (pos.x() < m_size && pos.y() < m_size) {
+            qreal x = marginX + pos.x() * cellSize;
+            qreal y = marginY + pos.y() * cellSize;
+            QGraphicsEllipseItem *star = new QGraphicsEllipseItem(
+                x - starRadius, y - starRadius, starRadius * 2, starRadius * 2
+                );
+            star->setBrush(starBrush);
+            star->setPen(starPen);
+            addItem(star);
+        }
+    }
 }
 
 void GoBoardScene::addPieceToScene(int col, int row, int player)
@@ -487,7 +687,6 @@ QGraphicsItem* GoBoardScene::findPieceAt(int col, int row) const
     qreal cellSize = qMin(sceneRect.width() / m_size, sceneRect.height() / m_size);
     qreal radius = cellSize * 0.42;
 
-    // 搜索场景中的所有棋子
     QList<QGraphicsItem*> items = this->items();
     for (QGraphicsItem *item : items) {
         GoPiece *piece = dynamic_cast<GoPiece*>(item);
@@ -518,4 +717,12 @@ QSizeF GoBoardScene::calculateSceneSize() const
     qreal width = (m_size - 1) * cellSize + cellSize * 1.2;
     qreal height = (m_size - 1) * cellSize + cellSize * 1.2;
     return QSizeF(width, height);
+}
+
+int GoBoardScene::getCell(int col, int row) const
+{
+    if (col >= 0 && col < m_size && row >= 0 && row < m_size) {
+        return m_board[col][row];
+    }
+    return -1;
 }

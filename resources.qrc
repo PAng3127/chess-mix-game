@@ -1,0 +1,10 @@
+<RCC>
+    <qresource prefix="/ico">
+        <file>ico/gochess256x.ico</file>
+        <file>ico/gochess16x.ico</file>
+        <file>ico/gochess32x.ico</file>
+        <file>ico/gochess64x.ico</file>
+        <file>ico/gochess128x.ico</file>
+        <file>ico/gochess.ico</file>
+    </qresource>
+</RCC>

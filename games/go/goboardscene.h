@@ -16,6 +16,9 @@ public:
     // 核心方法：在指定位置落子
     bool placePiece(int col, int row);
 
+    // 玩家Pass（停手）
+    bool passTurn();
+
     // 重置棋盘
     void reset(int size = 19);
 
@@ -36,12 +39,19 @@ public:
     // 获取提子数量
     int getCaptures(int player) const { return m_captures[player]; }
 
+    // 获取游戏结果详情
+    QString getGameResult() const;
+
+    // 获取是否已停手
+    bool isPassed() const { return m_consecutivePasses >= 2; }
+
 signals:
     void piecePlaced(int col, int row, int player);
     void pieceCaptured(int col, int row, int player);
-    void gameOver(int winner);
+    void gameOver(int winner, const QString &resultDetail);
     void currentPlayerChanged(int player);
     void capturesChanged(int black, int white);
+    void gameInfoChanged(const QString &info);
 
 private:
     int m_size;
@@ -55,18 +65,29 @@ private:
     QPoint m_koPoint;  // 禁着点
     bool m_koFlag;
 
+    // Pass计数（连续pass结束）
+    int m_consecutivePasses;
+
     // 棋盘上所有棋子的集合（用于快速查找）
     QSet<QPoint> m_blackStones;
     QSet<QPoint> m_whiteStones;
 
     // 核心围棋方法
     bool checkKo(int col, int row) const;
-    bool isSuicide(int col, int row, int player);  // 移除 const
+    bool isSuicide(int col, int row, int player);
     QVector<QPoint> getGroup(int col, int row) const;
     QVector<QPoint> getLiberties(const QVector<QPoint> &group) const;
     bool removeCapturedStones(int col, int row, int player);
-    int countTerritory(int player) const;
     bool isEye(int col, int row, int player) const;
+
+    // 死活判定
+    QSet<QPoint> getDeadStones(int player) const;
+    int countDeadStones(int player) const;
+
+    // 计分方法
+    int countTerritory(int player) const;
+    int countStones(int player) const;
+    double calculateScore(int player) const;
 
     // 绘制方法
     void drawBoard();
@@ -78,6 +99,9 @@ private:
 
     // 查找场景中的棋子
     QGraphicsItem* findPieceAt(int col, int row) const;
+
+    // 计算胜负
+    void calculateAndEmitResult();
 };
 
 #endif // GOBOARDSCENE_H
